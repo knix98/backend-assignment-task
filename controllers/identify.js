@@ -15,7 +15,7 @@ module.exports.identify = async (req, res) => {
         else email = null;
         
         if(phone) {
-            if(typeof phone != "string" || typeof phone != "number") return res.status(400).json({status: false, message: "phone must contain only numbers/digits"});
+            if(typeof phone != "string" && typeof phone != "number") return res.status(400).json({status: false, message: "phone must contain only numbers/digits"});
             phone = String(phone);
             if(!isDigitsOnly(phone)) return res.status(400).json({status: false, message: "phone must contain only numbers/digits"});
         }
@@ -47,7 +47,7 @@ module.exports.identify = async (req, res) => {
                 "phoneNumbers": phones,
                 "secondaryContactIds": []
             }
-            return res.status(200).json({status: true, contact});
+            return res.status(200).json({contact});
         }
 
         // get various distinct primary_ids that matched
@@ -73,11 +73,13 @@ module.exports.identify = async (req, res) => {
         // get all the primary_ids which are going to become secondary now
         distinct_primary_ids = distinct_primary_ids.filter(id => id != primary_id);
 
-        // update linked_id of all secondary contacts to these primary_ids
-        await db_query("UPDATE contacts SET linked_id = ?, precedence = 'secondary' WHERE linked_id IN (?)", [primary_id, distinct_primary_ids]);
-
-        // update all these primary_ids to secondary
-        await db_query("UPDATE contacts SET linked_id = ?, precedence = 'secondary' WHERE id IN (?)", [primary_id, distinct_primary_ids]);
+        if(distinct_primary_ids.length > 0) {
+            // update linked_id of all secondary contacts to these primary_ids
+            await db_query("UPDATE contacts SET linked_id = ?, precedence = 'secondary' WHERE linked_id IN (?)", [primary_id, distinct_primary_ids]);
+    
+            // update all these primary_ids to secondary
+            await db_query("UPDATE contacts SET linked_id = ?, precedence = 'secondary' WHERE id IN (?)", [primary_id, distinct_primary_ids]);
+        }
 
         // create a new secondary contact if the request body's email or phone was not found in DB
         if(!email_found || !phone_found) await db_query("INSERT INTO contacts (email, phone, linked_id, precedence) VALUES (?, ?, ?, 'secondary')", [email, phone, primary_id]);
@@ -99,13 +101,13 @@ module.exports.identify = async (req, res) => {
         for(let i = 0; i < secondary_contacts.length; i++) {
             let secondary_contact = secondary_contacts[i];
             contact.secondaryContactIds.push(secondary_contact.id);
-            if(secondary_contact.email) secondary_emails[secondary_contact.email] = true;
-            if(secondary_contact.phone) secondary_phones[secondary_contact.phone] = true;
+            if(secondary_contact.email && secondary_contact.email != primary_email) secondary_emails[secondary_contact.email] = true;
+            if(secondary_contact.phone && secondary_contact.phone != primary_phone) secondary_phones[secondary_contact.phone] = true;
         }
-        contact.emails.concat(Object.keys(secondary_emails));
-        contact.phoneNumbers.concat(Object.keys(secondary_phones));
+        contact.emails = contact.emails.concat(Object.keys(secondary_emails));
+        contact.phoneNumbers = contact.phoneNumbers.concat(Object.keys(secondary_phones));
         
-        return res.status(200).json({status: true, contact});
+        return res.status(200).json({contact});
     } catch (error) { 
         console.log("error => ", error);
         return res.status(500).json({status: false, message: "Internal server error"});
