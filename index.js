@@ -1,4 +1,5 @@
 const express = require("express");
+const { db_query } = require("./config/mysql");
 
 require("dotenv").config();
 
