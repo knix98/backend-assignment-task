@@ -37,7 +37,7 @@ module.exports.identify = async (req, res) => {
 
         // if no contacts found, then create a new primary contact and return
         if(results.length == 0) {
-            let resp = await db_query("INSERT INTO contacts (email, phone) VALUES (?, ?)", [email, phone]);
+            let resp = await db_query("INSERT INTO contacts (email, phone, created_at) VALUES (?, ?, NOW())", [email, phone]);
             let emails = email ? [email] : [];
             let phones = phone ? [phone] : [];
             let contact = 
@@ -82,7 +82,7 @@ module.exports.identify = async (req, res) => {
         }
 
         // create a new secondary contact if the request body's email or phone was not found in DB
-        if(!email_found || !phone_found) await db_query("INSERT INTO contacts (email, phone, linked_id, precedence) VALUES (?, ?, ?, 'secondary')", [email, phone, primary_id]);
+        if(!email_found || !phone_found) await db_query("INSERT INTO contacts (email, phone, linked_id, precedence, created_at) VALUES (?, ?, ?, 'secondary', NOW())", [email, phone, primary_id]);
 
         // now get details of all secondary contacts
         let secondary_contacts = await db_query("SELECT id, email, phone FROM contacts WHERE linked_id = ?", [primary_id]);
