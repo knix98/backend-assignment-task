@@ -11,12 +11,13 @@ module.exports.identify = async (req, res) => {
         // do the basic validations
         if(email) {
             if(typeof email != "string") return res.status(400).json({status: false, message: "email must be a string"});
+            email = email.trim().toLowerCase();
         }
         else email = null;
         
         if(phone) {
             if(typeof phone != "string" && typeof phone != "number") return res.status(400).json({status: false, message: "phone must contain only numbers/digits"});
-            phone = String(phone);
+            phone = String(phone).trim();
             if(!isDigitsOnly(phone)) return res.status(400).json({status: false, message: "phone must contain only numbers/digits"});
         }
         else phone = null;
@@ -56,8 +57,8 @@ module.exports.identify = async (req, res) => {
         let phone_found = false;
         for(let i = 0; i < results.length; i++) {
             let result = results[i];
-            if(result.email == email) email_found = true;
-            if(result.phone == phone) phone_found = true;
+            if(result.email && result.email == email) email_found = true;
+            if(result.phone && result.phone == phone) phone_found = true;
 
             if(result.precedence == "primary") distinct_primary_ids[result.id] = true;
             else distinct_primary_ids[result.linked_id] = true;
